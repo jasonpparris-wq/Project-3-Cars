@@ -2,55 +2,52 @@ $schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
 type: pipeline
 display_name: used_cars_training_pipeline
 experiment_name: used-cars-price-prediction
-description: Used cars price prediction pipeline (prep -> RF sweep -> register best model)
-
-settings:
-  default_compute: azureml:cpu-cluster
+description: Training Pipeline to predict used car prices using RandomForestRegressor (with sweep)
 
 inputs:
-  input_data:
+  input:
     type: uri_file
     path: azureml:used-cars-data@latest
 
 outputs:
   train_data:
-    type: uri_folder
   test_data:
-    type: uri_folder
   model_info_output_path:
-    type: uri_folder
+
+settings:
+  default_datastore: azureml:workspaceblobstore
+  default_compute: azureml:cpu-cluster
+  continue_on_step_failure: false
 
 jobs:
   prep_data:
-    type: command
+    name: prep_data
+    display_name: prep-data
     code: ../../../data-science/src
+    command: >-
+      python prep.py 
+      --raw_data ${{inputs.raw_data}} 
+      --train_data ${{outputs.train_data}}
+      --test_data ${{outputs.test_data}}
     environment: azureml:used-cars-train-env@latest
     inputs:
-      raw_data: ${{parent.inputs.input_data}}
-      test_train_ratio: 0.2
+      raw_data: ${{parent.inputs.input}}
     outputs:
       train_data: ${{parent.outputs.train_data}}
       test_data: ${{parent.outputs.test_data}}
-    command: >-
-      python prep.py
-      --raw_data ${{inputs.raw_data}}
-      --test_train_ratio ${{inputs.test_train_ratio}}
-      --train_data ${{outputs.train_data}}
-      --test_data ${{outputs.test_data}}
 
   sweep_step:
+    name: sweep_job
+    display_name: sweep-job
     type: sweep
-    trial: azureml:used_cars_train_rf@latest
-    sampling_algorithm: random
-
     inputs:
       train_data: ${{parent.jobs.prep_data.outputs.train_data}}
       test_data: ${{parent.jobs.prep_data.outputs.test_data}}
-
     outputs:
       model_output:
         type: mlflow_model
-
+    sampling_algorithm: random
+    trial: ./train.yml  # Refers to a separate command component
     search_space:
       n_estimators:
         type: choice
@@ -58,27 +55,26 @@ jobs:
       max_depth:
         type: choice
         values: [5, 10, 20, 30]
-
     objective:
       goal: minimize
       primary_metric: rmse
-
     limits:
-      max_total_trials: 12
-      max_concurrent_trials: 3
+      max_total_trials: 20
+      max_concurrent_trials: 10
       timeout: 7200
 
   register_model:
-    type: command
+    name: register_model
+    display_name: register-model
     code: ../../../data-science/src
+    command: >-
+      python register.py 
+      --model_name ${{inputs.model_name}} 
+      --model_path ${{inputs.model_path}} 
+      --model_info_output_path ${{outputs.model_info_output_path}}
     environment: azureml:used-cars-train-env@latest
     inputs:
-      model_name: used_cars_price_prediction_model
+      model_name: "used_cars_price_prediction_model"
       model_path: ${{parent.jobs.sweep_step.outputs.model_output}}
     outputs:
       model_info_output_path: ${{parent.outputs.model_info_output_path}}
-    command: >-
-      python register.py
-      --model_name ${{inputs.model_name}}
-      --model_path ${{inputs.model_path}}
-      --model_info_output_path ${{outputs.model_info_output_path}}
