@@ -1,0 +1,39 @@
+name: register-dataset
+
+on:
+  workflow_call:
+    inputs:
+      resource_group:
+        required: true
+        type: string
+      workspace_name:
+        required: true
+        type: string
+    secrets:
+      creds:
+        required: true
+
+jobs:
+  register-dataset:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pre Az CLI login
+        uses: actions/checkout@v3
+
+      - name: Az CLI login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.creds }}
+
+      - name: install-extension
+        run: az extension add -n ml -y
+
+      - name: update-extension
+        run: az extension update -n ml
+
+      - name: create-dataset-from-file
+        run: |
+          az ml data create \
+            --file mlops/azureml/train/data.yml \
+            --resource-group "${{ inputs.resource_group }}" \
+            --workspace-name "${{ inputs.workspace_name }}"
