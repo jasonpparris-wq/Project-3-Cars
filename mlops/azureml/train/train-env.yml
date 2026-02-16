@@ -1,5 +1,5 @@
 $schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
 name: used-cars-train-env
-image: mcr.microsoft.com/azureml/openmpi3.1.2-ubuntu18.04
+description: Environment for used cars price prediction training (sklearn + mlflow)
 conda_file: ../../../data-science/environment/train-conda.yml
-description: Environment to train Used Cars Price Prediction model
+image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
