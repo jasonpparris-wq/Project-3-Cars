@@ -1,41 +1,112 @@
+name: run-pipeline
+
+on:
+  workflow_call:
+    inputs:
+      parameters-file:
+        required: true
+        type: string
+      resource_group:
+        required: true
+        type: string
+      workspace_name:
+        required: true
+        type: string
+      job-name:
+        required: true
+        type: string
+    secrets:
+      creds:
+        required: true
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: "Az CLI login"
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.creds }}
+
+      - name: install-extension
+        run: az extension add -n ml -y
+
+      - name: update-extension
+        run: az extension update -n ml
+
       - name: run-ml-pipeline
+        shell: bash
         run: |
+          set -euo pipefail
+
+          PIPELINE_FILE="${GITHUB_WORKSPACE}/${{ inputs.parameters-file }}"
+          echo "Pipeline YAML: ${PIPELINE_FILE}"
+
+          if [[ ! -f "${PIPELINE_FILE}" ]]; then
+            echo "Pipeline YAML not found at: ${PIPELINE_FILE}"
+            ls -la "${GITHUB_WORKSPACE}"
+            exit 2
+          fi
+
           echo "Submitting pipeline job..."
+          run_id="$(az ml job create \
+            --file "${PIPELINE_FILE}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --workspace-name "${{ inputs.workspace_name }}" \
+            --query name -o tsv)"
 
-          run_id=$(az ml job create \
-            --file ${{ github.workspace }}/${{ inputs.parameters-file }} \
-            --resource-group ${{ inputs.resource_group }} \
-            --workspace-name ${{ inputs.workspace_name }} \
-            --query name -o tsv)
-
-          if [ -z "$run_id" ]; then
+          if [[ -z "${run_id}" ]]; then
             echo "Job creation failed"
             exit 3
           fi
 
-          echo "Run ID: $run_id"
+          echo "Run ID: ${run_id}"
 
-          status="NotStarted"
+          # Print Studio URL (clickable in logs)
+          studio_url="$(az ml job show -n "${run_id}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --workspace-name "${{ inputs.workspace_name }}" \
+            --query services.Studio.endpoint -o tsv || true)"
+          echo "Studio URL: ${studio_url}"
 
-          while true
-          do
-            status=$(az ml job show \
-              -n $run_id \
-              --resource-group ${{ inputs.resource_group }} \
-              --workspace-name ${{ inputs.workspace_name }} \
-              --query status -o tsv)
+          # Poll until terminal state
+          while true; do
+            status="$(az ml job show -n "${run_id}" \
+              --resource-group "${{ inputs.resource_group }}" \
+              --workspace-name "${{ inputs.workspace_name }}" \
+              --query status -o tsv || true)"
 
-            echo "Current status: $status"
-
-            if [[ "$status" == "Completed" ]]; then
-              echo "Training completed successfully!"
-              exit 0
+            if [[ -z "${status}" ]]; then
+              echo "Status query failed (empty status). Retrying..."
+              sleep 15
+              continue
             fi
 
-            if [[ "$status" == "Failed" || "$status" == "Canceled" ]]; then
-              echo "Training Job failed or canceled"
-              exit 3
-            fi
+            echo "Current status: ${status}"
 
-            sleep 20
+            case "${status}" in
+              Completed)
+                echo "Training job completed successfully."
+                exit 0
+                ;;
+              Failed|Canceled)
+                echo "Training job ended with status: ${status}"
+                echo "---- Error details (if available) ----"
+                az ml job show -n "${run_id}" \
+                  --resource-group "${{ inputs.resource_group }}" \
+                  --workspace-name "${{ inputs.workspace_name }}" \
+                  --query "{name:name,status:status,display_name:display_name,experiment_name:experiment_name,services:services,errors:errors}" -o yaml || true
+                exit 3
+                ;;
+              NotStarted|Queued|Starting|Preparing|Running|Finalizing|CancelRequested)
+                sleep 15
+                ;;
+              *)
+                echo "Unknown status: ${status}. Waiting..."
+                sleep 15
+                ;;
+            esac
           done
