@@ -2,7 +2,7 @@ $schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
 type: pipeline
 display_name: used_cars_training_pipeline
 experiment_name: used-cars-price-prediction
-description: Training Pipeline to predict used car prices using RandomForestRegressor
+description: Training pipeline to predict used car prices (no hyperparameter sweep)
 
 inputs:
   input:
@@ -12,6 +12,8 @@ inputs:
 outputs:
   train_data:
   test_data:
+  model_output:
+    type: mlflow_model
   model_info_output_path:
 
 settings:
@@ -36,36 +38,16 @@ jobs:
       train_data: ${{parent.outputs.train_data}}
       test_data: ${{parent.outputs.test_data}}
 
-  sweep_step:
-    name: sweep_job
-    display_name: sweep-job
-    type: sweep
+  train_model:
+    name: train_model
+    display_name: train-model
+    type: command
+    component: ./train.yml
     inputs:
       train_data: ${{parent.jobs.prep_data.outputs.train_data}}
       test_data: ${{parent.jobs.prep_data.outputs.test_data}}
     outputs:
-      model_output:
-        type: mlflow_model
-
-    sampling_algorithm: random
-    trial: ./train.yml
-
-    search_space:
-      n_estimators:
-        type: choice
-        values: [100, 200, 300]
-      max_depth:
-        type: choice
-        values: [5, 10, 15, 20]
-
-    objective:
-      goal: minimize
-      primary_metric: MSE
-
-    limits:
-      max_total_trials: 20
-      max_concurrent_trials: 10
-      timeout: 7200
+      model_output: ${{parent.outputs.model_output}}
 
   register_model:
     name: register_model
@@ -78,7 +60,7 @@ jobs:
       --model_info_output_path ${{outputs.model_info_output_path}}
     environment: azureml:used-cars-train-env@latest
     inputs:
-      model_name: "used_cars_price_model"
-      model_path: ${{parent.jobs.sweep_step.outputs.model_output}}
+      model_name: "used_cars_price_prediction_model"
+      model_path: ${{parent.jobs.train_model.outputs.model_output}}
     outputs:
       model_info_output_path: ${{parent.outputs.model_info_output_path}}
