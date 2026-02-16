@@ -28,12 +28,12 @@ jobs:
     code: ../../../data-science/src
     command: >-
       python prep.py
-      --raw_data ${{inputs.raw_data}}
+      --data ${{inputs.raw_data}}
       --train_data ${{outputs.train_data}}
       --test_data ${{outputs.test_data}}
     environment: azureml:used-cars-train-env@latest
     inputs:
-      raw_data: ${{parent.inputs.input}}
+      data: ${{parent.inputs.input}}
     outputs:
       train_data: ${{parent.outputs.train_data}}
       test_data: ${{parent.outputs.test_data}}
