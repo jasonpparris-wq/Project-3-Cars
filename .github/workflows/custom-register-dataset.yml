@@ -15,10 +15,6 @@ on:
       data_file:
         required: true
         type: string
-      file_type:
-        required: false
-        type: string
-        default: ""
     secrets:
       creds:
         required: true
@@ -30,7 +26,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v3
 
-      - name: "Az CLI login"
+      - name: Az CLI login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.creds }}
@@ -42,10 +38,9 @@ jobs:
         run: az extension update -n ml
 
       - name: create-dataset-from-file
-        if: ${{ inputs.file_type == ''}}
         run: |
+          echo "Registering data asset from: ${{ github.workspace }}/${{ inputs.data_file }}"
           az ml data create \
             --file "${{ github.workspace }}/${{ inputs.data_file }}" \
             --resource-group "${{ inputs.resource_group }}" \
-            --workspace-name "${{ inputs.workspace_name }}" \
-            --name "${{ inputs.name }}"
+            --workspace-name "${{ inputs.workspace_name }}"
