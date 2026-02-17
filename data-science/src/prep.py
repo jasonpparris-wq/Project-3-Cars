@@ -39,8 +39,8 @@ def main():
     test_df.to_csv(os.path.join(test_out_dir, "test.csv"), index=False)  # Specify the name of the test data file
 
     # log the metrics
-    mlflow.log_metric('train size', train_df.shape[0])  # Log the train dataset size
-    mlflow.log_metric('test size', test_df.shape[0])  # Log the test dataset size
+    mlflow.log_metric('train size', train_df.shape[__])  # Log the train dataset size
+    mlflow.log_metric('test size', test_df.shape[__])  # Log the test dataset size
     
     mlflow.end_run()
 
