@@ -1,12 +1,20 @@
+$schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
+
 name: used-cars-train-env
-channels:
-  - conda-forge
-dependencies:
-  - python=3.9
-  - pip
-  - pip:
-      - numpy
-      - pandas
-      - scikit-learn
-      - mlflow
-      - azureml-mlflow
+description: Fast pip-based environment for used cars training
+
+image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+
+conda_file: |
+  name: used-cars-train-env
+  channels:
+    - conda-forge
+  dependencies:
+    - python=3.9
+    - pip
+    - pip:
+        - numpy
+        - pandas
+        - scikit-learn
+        - mlflow
+        - azureml-mlflow
