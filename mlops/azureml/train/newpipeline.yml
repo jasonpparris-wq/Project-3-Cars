@@ -29,7 +29,7 @@ jobs:
       --data ${{inputs.raw_data}} 
       --train_data ${{outputs.train_data}}
       --test_data ${{outputs.test_data}}
-    environment: azureml:machine-failure-train-env@latest
+    environment: azureml:used-cars-train-env@latest
     inputs:
       raw_data: ${{parent.inputs.input}}
     outputs:
