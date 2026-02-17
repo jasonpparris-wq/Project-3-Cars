@@ -77,4 +77,4 @@ jobs:
         type: mlflow_model
         path: ${{parent.jobs.sweep_step.outputs.model_output}}
     outputs:
-      model_info_output_path: ${{parent.outputs.model_info_output_path}}
+      model_info_output_path: ${{ parent.outputs.model_info_output_path }}
