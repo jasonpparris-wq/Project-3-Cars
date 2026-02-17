@@ -1,7 +1,7 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
 type: command
-name: train_model
-display_name: train_model
+name: used-cars-random-tree-train
+display_name: used-cars-random-tree-train
 inputs:
   train_data:
     type: uri_folder
@@ -15,6 +15,7 @@ inputs:
     default: 10
 outputs:
   model_output:
+    # FIXED: explicit mode so AzureML mounts the output directory correctly
     type: mlflow_model
 code: ../../../data-science/src
 command: >-
@@ -24,4 +25,5 @@ command: >-
   --n_estimators ${{inputs.n_estimators}}
   --max_depth ${{inputs.max_depth}}
   --model_output ${{outputs.model_output}}
-environment: azureml:azureml:used-cars-train-env@latest
+# FIXED: must match the environment name registered by register-environment job
+environment: azureml:used-cars-train-env@latest

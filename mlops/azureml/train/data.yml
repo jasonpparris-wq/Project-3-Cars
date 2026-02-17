@@ -3,5 +3,6 @@ $schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
 type: uri_file
 name: used-cars-data
 description: A dataset of used cars for price prediction
-# Path is relative to this YAML file location in the repo: mlops/azureml/train/data.yml
+# Path is relative to this YAML file: mlops/azureml/train/data.yml
+# So ../../../data/ resolves to the repo-root /data/ folder
 path: ../../../data/used_cars.csv
