@@ -1,80 +1,76 @@
 $schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
 type: pipeline
+
 display_name: used_cars_training_pipeline
 experiment_name: used-cars-price-prediction
-description: Training Pipeline to predict used car prices using RandomForestRegressor
+description: End-to-end pipeline (prep -> train -> register) for used car price prediction
 
+# -------- Pipeline Inputs --------
 inputs:
-  input:
+  raw_data:
     type: uri_file
-    path: azureml:used-cars-data@latest
+    path: azureml:used-cars-data@latest   # OR point to repo file using local path (see note below)
+  test_train_ratio:
+    type: number
+    default: 0.2
 
+# -------- Pipeline Outputs --------
 outputs:
-  train_data:
-  test_data:
   model_info_output_path:
 
+# -------- Settings --------
 settings:
-  default_datastore: azureml:workspaceblobstore
-  # Must match the cluster created in deploy-model-training-pipeline-classical.yml (cluster_name: test-cluster)
-  default_compute: azureml:test-cluster
-  continue_on_step_failure: false
+  default_compute: azureml:cpu-cluster
 
 jobs:
   prep_data:
-    name: prep_data
-    display_name: prep-data
-    code: ../../../data-science/src
+    type: command
+    display_name: prep_data
+    code: ./../../../data/used_cars.csv
+    environment: azureml:used-cars-train-env@latest
     command: >-
-      python prep.py 
-      --raw_data ${{inputs.raw_data}} 
+      python prep.py
+      --data ${{inputs.raw_data}}
+      --test_train_ratio ${{inputs.test_train_ratio}}
       --train_data ${{outputs.train_data}}
       --test_data ${{outputs.test_data}}
-    environment: azureml:machine-failure-train-env@latest
     inputs:
-      raw_data: ${{parent.inputs.input}}
+      raw_data: ${{parent.inputs.raw_data}}
+      test_train_ratio: ${{parent.inputs.test_train_ratio}}
     outputs:
-      train_data: ${{parent.outputs.train_data}}
-      test_data: ${{parent.outputs.test_data}}
+      train_data:
+        type: uri_folder
+      test_data:
+        type: uri_folder
 
-  sweep_step:
-    name: sweep_job
-    display_name: sweep-job
-    type: sweep
+  train_model:
+    type: command
+    display_name: train_model
+    code: ../../../data-science/src
+    environment: azureml:used-cars-train-env@latest
+    command: >-
+      python train.py
+      --train_data ${{inputs.train_data}}
+      --test_data ${{inputs.test_data}}
+      --model_output ${{outputs.model_output}}
     inputs:
       train_data: ${{parent.jobs.prep_data.outputs.train_data}}
       test_data: ${{parent.jobs.prep_data.outputs.test_data}}
-    sampling_algorithm: random
-    trial: ./train.yml  # Refers to a separate command component
-    search_space:
-      n_estimators:
-        type: choice
-        values: [50, 100, 200, 400]
-      max_depth:
-        type: choice
-        values: [5, 10, 20, 30]
-    objective:
-      goal: minimize
-      primary_metric: rmse
-    limits:
-      max_total_trials: 20
-      max_concurrent_trials: 10
-      timeout: 7200
+    outputs:
+      model_output:
+        type: uri_folder
 
   register_model:
-    name: register_model
-    display_name: register-model
+    type: command
+    display_name: register_model
     code: ../../../data-science/src
-    command: >-
-      python register.py 
-      --model_name "${{inputs.model_name}}" 
-      --model_path "${{inputs.model_path}}" 
-      --model_info_output_path "${{outputs.model_info_output_path}}"
     environment: azureml:used-cars-train-env@latest
+    command: >-
+      python register.py
+      --model_path ${{inputs.model_path}}
+      --model_name used_cars_price_model
+      --model_info_output_path ${{outputs.model_info_output_path}}
     inputs:
-      model_name: "used_cars_price_model"
-      model_path:
-        type: mlflow_model
-        path: ${{parent.jobs.sweep_step.outputs.model_output}}
+      model_path: ${{parent.jobs.train_model.outputs.model_output}}
     outputs:
-      model_info_output_path: ${{ parent.outputs.model_info_output_path }}
+      model_info_output_path: ${{parent.outputs.model_info_output_path}}
