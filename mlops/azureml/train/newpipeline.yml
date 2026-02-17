@@ -47,7 +47,7 @@ jobs:
     type: command
     display_name: train_model
     code: ../../../data-science/src
-    environment: azureml:used-cars-train-env@latest
+    environment: azureml:azureml:used-cars-train-env:1
     command: >-
       python train.py
       --train_data ${{inputs.train_data}}
@@ -64,7 +64,7 @@ jobs:
     type: command
     display_name: register_model
     code: ../../../data-science/src
-    environment: azureml:used-cars-train-env@latest
+    environment: azureml:azureml:used-cars-train-env:1
     command: >-
       python register.py
       --model_path ${{inputs.model_path}}
