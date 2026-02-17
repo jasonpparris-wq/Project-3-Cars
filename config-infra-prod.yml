@@ -4,9 +4,9 @@ variables:
   # Global
   ap_vm_image: ubuntu-20.04
 
-  namespace: demoworkspace
-  postfix: 001
-  location: eastus
+  namespace: demoworkspace # Updated namespace
+  postfix: 001 # Updated postfix
+  location: eastus # Updated location
 
   environment: prod
   enable_aml_computecluster: true
@@ -20,3 +20,4 @@ variables:
   # For pipeline reference
   resource_group: defaut_resource_group_jp
   aml_workspace: azure_2026
+
