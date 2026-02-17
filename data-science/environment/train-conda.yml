@@ -1,14 +1,17 @@
-name: sklearn-env
 channels:
+  - defaults
+  - anaconda
   - conda-forge
 dependencies:
-  - python=3.8
-  - pip=21.2.4
-  - scikit-learn=0.23.2
-  - scipy=1.7.1
-  - pip:  
-    - mlflow==2.8.1
-    - azureml-mlflow==1.51.0
-    - azureml-inference-server-http
-    - azureml-core==1.49.0
-    - cloudpickle==1.6.0
+  - python=3.7.5
+  - pip
+  - pip:
+      - azureml-mlflow==1.38.0
+      - azure-ai-ml==1.0.0
+      - pyarrow==10.0.0
+      - scikit-learn==0.24.1
+      - pandas==1.2.1
+      - joblib==1.0.0
+      - matplotlib==3.3.3
+      - git+https://github.com/microsoft/AzureML-Observability#subdirectory=aml-obs-client
+      - git+https://github.com/microsoft/AzureML-Observability#subdirectory=aml-obs-collector
