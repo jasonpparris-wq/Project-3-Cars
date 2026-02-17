@@ -2,7 +2,7 @@ $schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
 type: pipeline
 display_name: used_cars_training_pipeline
 experiment_name: used-cars-price-prediction
-description: Training pipeline to predict used car prices using RandomForestRegressor
+description: Training Pipeline to predict used car prices using RandomForestRegressor
 
 inputs:
   input:
@@ -16,6 +16,7 @@ outputs:
 
 settings:
   default_datastore: azureml:workspaceblobstore
+  # Must match the cluster created in deploy-model-training-pipeline-classical.yml (cluster_name: test-cluster)
   default_compute: azureml:test-cluster
   continue_on_step_failure: false
 
@@ -25,8 +26,8 @@ jobs:
     display_name: prep-data
     code: ../../../data-science/src
     command: >-
-      python prep.py
-      --data ${{inputs.raw_data}}
+      python prep.py 
+      --raw_data ${{inputs.raw_data}} 
       --train_data ${{outputs.train_data}}
       --test_data ${{outputs.test_data}}
     environment: azureml:machine-failure-train-env@latest
@@ -44,7 +45,7 @@ jobs:
       train_data: ${{parent.jobs.prep_data.outputs.train_data}}
       test_data: ${{parent.jobs.prep_data.outputs.test_data}}
     sampling_algorithm: random
-    trial: ./train.yml
+    trial: ./train.yml  # Refers to a separate command component
     search_space:
       n_estimators:
         type: choice
@@ -65,13 +66,15 @@ jobs:
     display_name: register-model
     code: ../../../data-science/src
     command: >-
-      python register.py
-      --model_name ${{inputs.model_name}}
-      --model_path ${{inputs.model_path}}
-      --model_info_output_path ${{outputs.model_info_output_path}}
+      python register.py 
+      --model_name "${{inputs.model_name}}" 
+      --model_path "${{inputs.model_path}}" 
+      --model_info_output_path "${{outputs.model_info_output_path}}"
     environment: azureml:machine-failure-train-env@latest
     inputs:
-      model_name: used_cars_price_model
-      model_path: ${{parent.jobs.sweep_step.outputs.model_output}}
+      model_name: "used_cars_price_model"
+      model_path:
+        type: mlflow_model
+        path: ${{parent.jobs.sweep_step.outputs.model_output}}
     outputs:
       model_info_output_path: ${{parent.outputs.model_info_output_path}}

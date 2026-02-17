@@ -2,7 +2,7 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 type: command
 name: train_model
 display_name: train_model
-inputs: 
+inputs:
   train_data:
     type: uri_folder
   test_data:
@@ -18,10 +18,10 @@ outputs:
     type: mlflow_model
 code: ../../../data-science/src
 command: >-
-  python train.py 
+  python train.py
   --train_data ${{inputs.train_data}}
   --test_data ${{inputs.test_data}}
   --n_estimators ${{inputs.n_estimators}}
   --max_depth ${{inputs.max_depth}}
   --model_output ${{outputs.model_output}}
-environment: azureml:used-cars-train-env@latest
+environment: azureml:machine-failure-train-env@latest
