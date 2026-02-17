@@ -1,5 +1,6 @@
 $schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
-name: used-cars-data
-description: Used cars dataset for price prediction
+
 type: uri_file
-path: ../../../data/used_cars.csv
+name: used-cars-data
+description: A dataset of used cars for price prediction
+path: ../../../used_cars.csv

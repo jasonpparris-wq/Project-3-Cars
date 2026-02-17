@@ -2,7 +2,7 @@ $schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
 type: pipeline
 display_name: used_cars_training_pipeline
 experiment_name: used-cars-price-prediction
-description: Training Pipeline to predict used car prices using RandomForestRegressor (with sweep)
+description: Training Pipeline to predict used car prices using RandomForestRegressor
 
 inputs:
   input:
@@ -26,12 +26,12 @@ jobs:
     code: ../../../data-science/src
     command: >-
       python prep.py 
-      --data ${{inputs.data}} 
+      --raw_data ${{inputs.raw_data}} 
       --train_data ${{outputs.train_data}}
       --test_data ${{outputs.test_data}}
-    environment: azureml:used-cars-train-env@latest
+    environment: azureml:machine-failure-train-env@latest
     inputs:
-      data: ${{parent.inputs.input}}
+      raw_data: ${{parent.inputs.input}}
     outputs:
       train_data: ${{parent.outputs.train_data}}
       test_data: ${{parent.outputs.test_data}}
@@ -72,9 +72,9 @@ jobs:
       --model_name ${{inputs.model_name}} 
       --model_path ${{inputs.model_path}} 
       --model_info_output_path ${{outputs.model_info_output_path}}
-    environment: azureml:used-cars-train-env@latest
+    environment: azureml:machine-failure-train-env@latest
     inputs:
-      model_name: "used_cars_price_prediction_model"
+      model_name: "used_cars_price_model"
       model_path: ${{parent.jobs.sweep_step.outputs.model_output}}
     outputs:
       model_info_output_path: ${{parent.outputs.model_info_output_path}}

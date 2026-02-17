@@ -1,9 +1,8 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
-name: used_cars_train_rf
-display_name: Train Used Cars RandomForest Regressor
-type: command
-
-inputs:
+type: command  # This is correct for trial definitions
+name: train_model
+display_name: train_model
+inputs: 
   train_data:
     type: uri_folder
   test_data:
@@ -14,19 +13,15 @@ inputs:
   max_depth:
     type: integer
     default: 10
-
 outputs:
   model_output:
     type: mlflow_model
-
 code: ../../../data-science/src
-
-environment: azureml:used-cars-train-env@latest
-
 command: >-
-  python train.py
+  python train.py 
   --train_data ${{inputs.train_data}}
   --test_data ${{inputs.test_data}}
   --n_estimators ${{inputs.n_estimators}}
   --max_depth ${{inputs.max_depth}}
   --model_output ${{outputs.model_output}}
+environment: azureml:machine-failure-train-env@latest
