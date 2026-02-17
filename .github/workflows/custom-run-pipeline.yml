@@ -3,89 +3,110 @@ name: run-pipeline
 on:
   workflow_call:
     inputs:
-      # --- REQUIRED CORE AML CONTEXT ---
+      parameters-file:
+        required: true
+        type: string
       resource_group:
         required: true
         type: string
       workspace_name:
         required: true
         type: string
-
-      # --- PIPELINE DEFINITION FILE(S) ---
-      pipeline_file:
+      job-name:
         required: true
         type: string
-      parameters_file:
-        required: true
-        type: string
-
-      # --- THESE WERE MISSING (YOUR ERROR) ---
-      name:
-        required: true
-        type: string
-      data_file:
-        required: true
-        type: string
-
     secrets:
       creds:
         required: true
 
 jobs:
-  run_pipeline:
-    name: Run Azure ML Pipeline
+  run-pipeline:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: checkout
+        uses: actions/checkout@v3
 
-      - name: Azure Login
+      - name: "Az CLI login"
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.creds }}
+          creds: ${{secrets.creds}}
 
-      - name: Install Azure ML CLI extension
-        shell: bash
+      - name: install-extension
+        run: az extension add -n ml -y
+
+      - name: update-extension
+        run: az extension update -n ml
+
+      - name: run-ml-pipeline
+        shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
         run: |
-          set -e
-          az version
-          az extension add -n ml -y || az extension update -n ml
+          set -euo pipefail
 
-      - name: Echo inputs (debug)
-        shell: bash
-        run: |
-          echo "resource_group:  ${{ inputs.resource_group }}"
-          echo "workspace_name:  ${{ inputs.workspace_name }}"
-          echo "pipeline_file:   ${{ inputs.pipeline_file }}"
-          echo "parameters_file:${{ inputs.parameters_file }}"
-          echo "name:           ${{ inputs.name }}"
-          echo "data_file:      ${{ inputs.data_file }}"
+          PIPELINE_FILE="${GITHUB_WORKSPACE}/${{ inputs.parameters-file }}"
+          echo "Pipeline YAML: ${PIPELINE_FILE}"
 
-      # NOTE:
-      # This step submits your pipeline job. The exact --set paths depend on how your pipeline YAML defines inputs.
-      # This version submits the pipeline YAML and uses the parameters file if your pipeline references it internally.
-      # If your pipeline expects different input names, adjust the --set lines accordingly.
-      - name: Submit pipeline job
-        shell: bash
-        run: |
-          set -e
+          if [[ ! -f "${PIPELINE_FILE}" ]]; then
+            echo "Pipeline YAML not found at: ${PIPELINE_FILE}"
+            ls -la "${GITHUB_WORKSPACE}"
+            exit 2
+          fi
 
-          # Sanity checks so failures are obvious
-          test -f "${{ inputs.pipeline_file }}" || (echo "Missing pipeline_file" && exit 1)
-          test -f "${{ inputs.parameters_file }}" || (echo "Missing parameters_file" && exit 1)
-
-          echo "Submitting Azure ML pipeline job..."
-
-          az ml job create \
-            --file "${{ inputs.pipeline_file }}" \
+          echo "Submitting pipeline job..."
+          run_id="$(az ml job create \
+            --file "${PIPELINE_FILE}" \
             --resource-group "${{ inputs.resource_group }}" \
             --workspace-name "${{ inputs.workspace_name }}" \
-            --set display_name="${{ inputs.name }}" \
-            --set experiment_name="${{ inputs.name }}" \
-            --set inputs.data_file="${{ inputs.data_file }}" \
-            --stream
+            --query name -o tsv)"
 
-      - name: Done
-        shell: bash
-        run: echo "Pipeline submission step completed."
+          if [[ -z "${run_id}" ]]; then
+            echo "Job creation failed"
+            exit 3
+          fi
+
+          echo "Run ID: ${run_id}"
+
+          # Print Studio URL (clickable in logs)
+          studio_url="$(az ml job show -n "${run_id}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --workspace-name "${{ inputs.workspace_name }}" \
+            --query services.Studio.endpoint -o tsv || true)"
+          echo "Studio URL: ${studio_url}"
+
+          # Poll until terminal state
+          while true; do
+            status="$(az ml job show -n "${run_id}" \
+              --resource-group "${{ inputs.resource_group }}" \
+              --workspace-name "${{ inputs.workspace_name }}" \
+              --query status -o tsv || true)"
+
+            if [[ -z "${status}" ]]; then
+              echo "Status query failed (empty status). Retrying..."
+              sleep 15
+              continue
+            fi
+
+            echo "Current status: ${status}"
+
+            case "${status}" in
+              Completed)
+                echo "Training job completed successfully."
+                exit 0
+                ;;
+              Failed|Canceled)
+                echo "Training job ended with status: ${status}"
+                echo "---- Error details (if available) ----"
+                az ml job show -n "${run_id}" \
+                  --resource-group "${{ inputs.resource_group }}" \
+                  --workspace-name "${{ inputs.workspace_name }}" \
+                  --query "{name:name,status:status,display_name:display_name,experiment_name:experiment_name,services:services,errors:errors}" -o yaml || true
+                exit 3
+                ;;
+              NotStarted|Queued|Starting|Preparing|Running|Finalizing|CancelRequested)
+                sleep 15
+                ;;
+              *)
+                echo "Unknown status: ${status}. Waiting..."
+                sleep 15
+                ;;
+            esac
+          done
