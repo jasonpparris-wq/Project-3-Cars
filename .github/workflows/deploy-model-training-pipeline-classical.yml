@@ -18,7 +18,7 @@ jobs:
       needs: get-config
       uses: ./.github/workflows/custom-create-compute.yml
       with:
-        cluster_name: cpu-cluster
+        cluster_name: test-cluster
         size: Standard_DS11_v2
         min_instances: 0
         max_instances: 1

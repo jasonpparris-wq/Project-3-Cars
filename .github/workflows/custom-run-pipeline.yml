@@ -29,7 +29,7 @@ jobs:
       - name: "Az CLI login"
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.creds }}
+          creds: ${{secrets.creds}}
 
       - name: install-extension
         run: az extension add -n ml -y
@@ -38,7 +38,7 @@ jobs:
         run: az extension update -n ml
 
       - name: run-ml-pipeline
-        shell: bash
+        shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
         run: |
           set -euo pipefail
 

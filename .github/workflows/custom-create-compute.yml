@@ -59,22 +59,22 @@ jobs:
       - name: create-compute-default-tier
         if: ${{ inputs.cluster_tier == ''}}
         run: |
-          az ml compute create --name "${{ inputs.cluster_name }}" \
+          az ml compute create --name ${{ inputs.cluster_name }} \
                                   --type AmlCompute \
-                                  --tier "Dedicated" \
-                                  --size "${{ inputs.size }}" \
+                                  --tier "dedicated" \
+                                  --size ${{ inputs.size }} \
                                   --min-instances ${{ inputs.min_instances }} \
                                   --max-instances ${{ inputs.max_instances }} \
-                                  --resource-group "${{ inputs.resource_group }}" \
-                                  --workspace-name "${{ inputs.workspace_name }}"
+                                  --resource-group ${{ inputs.resource_group }} \
+                                  --workspace-name ${{ inputs.workspace_name }}
       - name: create-compute-using-tier
         if: ${{ inputs.cluster_tier != ''}}
         run: |
-          az ml compute create --name "${{ inputs.cluster_name }}" \
+          az ml compute create --name ${{ inputs.cluster_name }} \
                                   --type AmlCompute \
-                                  --tier "${{ inputs.cluster_tier }}" \
-                                  --size "${{ inputs.size }}" \
+                                  --tier ${{ inputs.cluster_tier }} \
+                                  --size ${{ inputs.size }} \
                                   --min-instances ${{ inputs.min_instances }} \
                                   --max-instances ${{ inputs.max_instances }} \
-                                  --resource-group "${{ inputs.resource_group }}" \
-                                  --workspace-name "${{ inputs.workspace_name }}"
+                                  --resource-group ${{ inputs.resource_group }} \
+                                  --workspace-name ${{ inputs.workspace_name }}
