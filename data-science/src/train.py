@@ -1,4 +1,3 @@
-
 import argparse
 import os
 import pandas as pd
@@ -13,6 +12,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.ensemble import RandomForestRegressor
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train_data", type=str, required=True)
@@ -22,11 +22,13 @@ def parse_args():
     parser.add_argument("--model_output", type=str, required=True)
     return parser.parse_args()
 
+
 def load_split(folder: str, filename: str) -> pd.DataFrame:
     path = os.path.join(folder, filename)
     if not os.path.exists(path):
         raise FileNotFoundError(f"Expected file not found: {path}")
     return pd.read_csv(path)
+
 
 def main():
     args = parse_args()
@@ -36,7 +38,10 @@ def main():
 
     target_col = "price"
     if target_col not in train_df.columns:
-        raise ValueError(f"Target column '{target_col}' not found in training data columns: {train_df.columns.tolist()}")
+        raise ValueError(
+            f"Target column '{target_col}' not found in training data columns: "
+            f"{train_df.columns.tolist()}"
+        )
 
     X_train = train_df.drop(columns=[target_col])
     y_train = train_df[target_col]
@@ -64,7 +69,10 @@ def main():
 
     pipe = Pipeline(steps=[("prep", preprocessor), ("model", model)])
 
+    # FIXED: use context manager so MLflow run is always cleanly ended,
+    # even if an exception is raised mid-training.
     with mlflow.start_run():
+        mlflow.log_param("model", "used-cars-random-tree")
         mlflow.log_param("n_estimators", args.n_estimators)
         mlflow.log_param("max_depth", args.max_depth)
 
@@ -75,17 +83,17 @@ def main():
         mae = float(mean_absolute_error(y_test, preds))
         r2 = float(r2_score(y_test, preds))
 
-        # This MUST match pipeline objective primary_metric
+        # primary_metric in newpipeline.yml sweep objective is "rmse" — must match exactly
         mlflow.log_metric("rmse", rmse)
         mlflow.log_metric("mae", mae)
         mlflow.log_metric("r2", r2)
 
-        # Ensure output exists and save an MLflow model directory THERE
         os.makedirs(args.model_output, exist_ok=True)
         mlflow.sklearn.save_model(sk_model=pipe, path=args.model_output)
 
         print(f"Saved MLflow model to: {args.model_output}")
         print(f"rmse={rmse:.4f}, mae={mae:.4f}, r2={r2:.4f}")
+
 
 if __name__ == "__main__":
     main()
