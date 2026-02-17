@@ -16,12 +16,12 @@ outputs:
 
 settings:
   default_datastore: azureml:workspaceblobstore
-  # Must match the cluster name created in deploy-model-training-pipeline-classical.yml
   default_compute: azureml:test-cluster
   continue_on_step_failure: false
 
 jobs:
   prep_data:
+    type: command
     name: prep_data
     display_name: prep-data
     code: ../../../data-science/src
@@ -38,18 +38,38 @@ jobs:
       test_data: ${{parent.outputs.test_data}}
 
   sweep_step:
+    type: sweep
     name: sweep_job
     display_name: sweep-job
-    type: sweep
+    compute: azureml:test-cluster
     inputs:
       train_data: ${{parent.jobs.prep_data.outputs.train_data}}
       test_data: ${{parent.jobs.prep_data.outputs.test_data}}
-    # FIXED: outputs block is required so register_model can reference model_output
     outputs:
       model_output:
         type: mlflow_model
     sampling_algorithm: random
-    trial: ./train.yml
+    trial:
+      type: command
+      code: ../../../data-science/src
+      command: >-
+        python train.py
+        --train_data ${{inputs.train_data}}
+        --test_data ${{inputs.test_data}}
+        --n_estimators ${{inputs.n_estimators}}
+        --max_depth ${{inputs.max_depth}}
+        --model_output ${{outputs.model_output}}
+      environment: azureml:used-cars-train-env@latest
+      inputs:
+        train_data: ${{parent.inputs.train_data}}
+        test_data: ${{parent.inputs.test_data}}
+        n_estimators:
+          type: integer
+        max_depth:
+          type: integer
+      outputs:
+        model_output:
+          type: mlflow_model
     search_space:
       n_estimators:
         type: choice
@@ -66,6 +86,7 @@ jobs:
       timeout: 7200
 
   register_model:
+    type: command
     name: register_model
     display_name: register-model
     code: ../../../data-science/src
@@ -79,7 +100,6 @@ jobs:
       model_name: "used-cars-random-tree-model"
       model_path:
         type: mlflow_model
-        # FIXED: correct reference — sweep_step exposes model_output in its outputs block
         path: ${{parent.jobs.sweep_step.outputs.model_output}}
     outputs:
       model_info_output_path: ${{parent.outputs.model_info_output_path}}
