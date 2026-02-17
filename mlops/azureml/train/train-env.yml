@@ -1,7 +1,7 @@
 $schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
 
 name: used-cars-train-env
-version: 2
+version: 1
 description: Environment for used-cars price prediction training pipeline
 image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
 # conda_file is injected by the register-environment workflow step via --conda-file flag
