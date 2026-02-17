@@ -43,6 +43,9 @@ jobs:
     inputs:
       train_data: ${{parent.jobs.prep_data.outputs.train_data}}
       test_data: ${{parent.jobs.prep_data.outputs.test_data}}
+    outputs:
+      best_model:
+        type: mlflow_model
     sampling_algorithm: random
     trial: ./train.yml  # Refers to a separate command component
     search_space:
@@ -72,6 +75,6 @@ jobs:
     environment: azureml:machine-failure-train-env@latest
     inputs:
       model_name: "used_cars_price_model"
-      model_path: ${{parent.jobs.sweep_step.outputs.model_output}}
+      model_path: ${{parent.jobs.sweep_step.outputs.best_model}}
     outputs:
       model_info_output_path: ${{parent.outputs.model_info_output_path}}
