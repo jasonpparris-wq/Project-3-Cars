@@ -72,6 +72,6 @@ jobs:
     environment: azureml:machine-failure-train-env@latest
     inputs:
       model_name: used_cars_price_model
-      model_path: ${{parent.jobs.sweep_step.outputs.model_output}}
+      model_path: ${{parent.jobs.sweep_step.outputs.model_output.outputs.model_output}}
     outputs:
       model_info_output_path: ${{parent.outputs.model_info_output_path}}
