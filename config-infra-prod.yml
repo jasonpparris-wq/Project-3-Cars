@@ -2,5 +2,5 @@
 # Referenced by the get-config job in deploy-model-training-pipeline-classical.yml
 # Update these values to match your Azure subscription before running the workflow.
 
-resource_group: your-resource-group-name
-aml_workspace: your-aml-workspace-name
+resource_group: defaut_resource_group_jp
+aml_workspace: azure_2026
