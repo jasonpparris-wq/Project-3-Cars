@@ -1,24 +1,41 @@
 
 import argparse
+import json
+from pathlib import Path
 import mlflow
-
-mlflow.start_run()
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, help="Path to the trained model")
+    parser.add_argument("--model_name", type=str, required=True)
+    parser.add_argument("--model_path", type=str, required=True)
+    parser.add_argument("--model_info_output_path", type=str, required=True)
+
     args = parser.parse_args()
 
-    # Load the trained model from the provided path
-    model = mlflow.sklearn.load_model(args.model)
+    mlflow.start_run()
 
-    print("Registering the best trained used cars price prediction model")
+    print(f"Registering model '{args.model_name}' from path: {args.model_path}")
 
-    mlflow.sklearn.log_model(
-        sk_model=model,
-        registered_model_name="price_prediction_model",
-        artifact_path="model",
+    # Register model via MLflow (AzureML integration)
+    result = mlflow.register_model(
+        model_uri=args.model_path,
+        name=args.model_name
     )
+
+    # Write model metadata to pipeline output
+    output_dir = Path(args.model_info_output_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    model_info = {
+        "model_name": args.model_name,
+        "model_version": result.version,
+        "model_uri": args.model_path
+    }
+
+    with open(output_dir / "model_info.json", "w") as f:
+        json.dump(model_info, f)
+
+    print(f"Model registered successfully: {model_info}")
 
     mlflow.end_run()
 
