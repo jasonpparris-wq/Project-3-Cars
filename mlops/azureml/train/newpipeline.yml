@@ -1,105 +1,86 @@
 $schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
 type: pipeline
-display_name: used-cars-training-pipeline
-experiment_name: used-cars-price-prediction
-description: Training Pipeline to predict used car prices using RandomTreeRegressor
+display_name: used-cars-price-prediction-pipeline  # Provide the display name for the pipeline
+experiment_name: used-cars-price-prediction-pipeline  # Provide the experiment name
+description: End-to-end pipeline: prepare data, train/sweep RandomForest model, and register the best model.  # Provide the description for the pipeline
 
 inputs:
-  input:
+  raw_data:
     type: uri_file
     path: azureml:used-cars-data@latest
 
 outputs:
   train_data:
+    type: uri_folder  # Specify the type for train_data output
   test_data:
+    type: uri_folder  # Specify the type for test_data output
   model_info_output_path:
+    type: uri_folder  # Specify the type for model_info_output_path output
 
 settings:
   default_datastore: azureml:workspaceblobstore
-  default_compute: azureml:test-cluster
+  default_compute: azureml:cpu-cluster
   continue_on_step_failure: false
 
 jobs:
   prep_data:
-    type: command
-    name: prep_data
-    display_name: prep-data
+    name: data_preparation  # Provide the job name
+    display_name: data-preparation  # Provide the display name for the job
     code: ../../../data-science/src
     command: >-
-      python prep.py
-      --raw_data ${{inputs.raw_data}}
+      python prep.py  
+      --raw_data ${{inputs.raw_data}} 
       --train_data ${{outputs.train_data}}
-      --test_data ${{outputs.test_data}}
+      --test_data ${{outputs.test_data}} 
     environment: azureml:used-cars-train-env@latest
     inputs:
-      raw_data: ${{parent.inputs.input}}
+      raw_data: ${{parent.inputs.raw_data}}
     outputs:
       train_data: ${{parent.outputs.train_data}}
       test_data: ${{parent.outputs.test_data}}
 
   sweep_step:
+    name: sweep_train_model
+    display_name: train-model-sweep  # Hint: Provide the display name for the job
     type: sweep
-    name: sweep_job
-    display_name: sweep-job
-    compute: azureml:test-cluster
     inputs:
       train_data: ${{parent.jobs.prep_data.outputs.train_data}}
       test_data: ${{parent.jobs.prep_data.outputs.test_data}}
     outputs:
       model_output:
         type: mlflow_model
-    sampling_algorithm: random
-    trial:
-      type: command
-      code: ../../../data-science/src
-      command: >-
-        python train.py
-        --train_data ${{inputs.train_data}}
-        --test_data ${{inputs.test_data}}
-        --n_estimators ${{inputs.n_estimators}}
-        --max_depth ${{inputs.max_depth}}
-        --model_output ${{outputs.model_output}}
-      environment: azureml:used-cars-train-env@latest
-      inputs:
-        train_data: ${{parent.inputs.train_data}}
-        test_data: ${{parent.inputs.test_data}}
-        n_estimators:
-          type: integer
-        max_depth:
-          type: integer
-      outputs:
-        model_output:
-          type: mlflow_model
+    sampling_algorithm: random  # Specify the sampling algorithm
+    trial: ./train.yml  # Refers to a separate command component
     search_space:
       n_estimators:
         type: choice
-        values: [50, 100, 200, 400]
+        values: [10, 20, 30, 50]
       max_depth:
-        type: choice
-        values: [5, 10, 20, 30]
+        type: choice  # Specify the type for max_depth
+        values: [3, 5, 8, 10, 15]  # Provide the values for max_depth
     objective:
       goal: minimize
-      primary_metric: rmse
+      primary_metric: MSE
     limits:
       max_total_trials: 20
       max_concurrent_trials: 10
       timeout: 7200
 
+
   register_model:
-    type: command
-    name: register_model
-    display_name: register-model
+    name: register_model  # Provide the job name
+    display_name: register-model  # Provide the display name for the job
     code: ../../../data-science/src
     command: >-
-      python register.py
-      --model_name "${{inputs.model_name}}"
-      --model_path "${{inputs.model_path}}"
-      --model_info_output_path "${{outputs.model_info_output_path}}"
+      python register.py 
+      --model_name ${{inputs.model_name}} 
+      --model_path ${{inputs.model_path}} 
+      --model_info_output_path ${{outputs.model_info_output_path}}
     environment: azureml:used-cars-train-env@latest
     inputs:
-      model_name: "used-cars-random-tree-model"
-      model_path:
-        type: mlflow_model
-        path: ${{parent.jobs.sweep_step.outputs.model_output}}
+      model_name: "used_cars_price_prediction_model"
+      model_path: ${{parent.jobs.sweep_step.outputs.model_output}}
     outputs:
       model_info_output_path: ${{parent.outputs.model_info_output_path}}
+
+
