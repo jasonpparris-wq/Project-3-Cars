@@ -20,7 +20,7 @@ outputs:
 settings:
   default_datastore: azureml:workspaceblobstore
   # IMPORTANT: must match the cluster you create in GitHub Actions (see deploy-model-training-pipeline workflow)
-  default_compute: azureml:cpu-cluster
+  default_compute: azureml:test-cluster
   continue_on_step_failure: false
 
 jobs:
