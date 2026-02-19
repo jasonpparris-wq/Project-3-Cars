@@ -1,8 +1,9 @@
 $schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
 type: pipeline
-display_name: used-cars-price-prediction-pipeline
+
+display_name: used-cars-train-sweep-register
 experiment_name: used-cars-price-prediction-pipeline
-description: End-to-end pipeline: prepare data, train/sweep RandomForest model, and register the best model.
+description: "End-to-end pipeline: prepare data, train/sweep RandomForest model, and register the best model."
 
 inputs:
   raw_data:
@@ -19,13 +20,11 @@ outputs:
 
 settings:
   default_datastore: azureml:workspaceblobstore
-  # IMPORTANT: must match the cluster you create in GitHub Actions (see deploy-model-training-pipeline workflow)
-  default_compute: azureml:test-cluster
+  default_compute: azureml:cpu-cluster
   continue_on_step_failure: false
 
 jobs:
   prep_data:
-    name: prep_data
     display_name: prep-data
     code: ../../../data-science/src
     command: >-
@@ -41,8 +40,7 @@ jobs:
       test_data: ${{parent.outputs.test_data}}
 
   sweep_step:
-    name: sweep_step
-    display_name: train-sweep
+    display_name: sweep-train
     type: sweep
     inputs:
       train_data: ${{parent.jobs.prep_data.outputs.train_data}}
@@ -68,7 +66,6 @@ jobs:
       timeout: 7200
 
   register_model:
-    name: register_model
     display_name: register-model
     code: ../../../data-science/src
     command: >-
