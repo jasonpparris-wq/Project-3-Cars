@@ -50,7 +50,7 @@ jobs:
         run: az extension update -n ml
       - name: run-ml-pipeline
         run: |
-          run_id=$(az ml job create --file ${{ github.workspace }}/${{ inputs.parameters-file  }} --resource-group ${{ inputs.resource_group }} --workspace-name ${{ inputs.workspace_name }} --query name -o tsv)
+          run_id=$(az ml job create --file ${{ github.workspace }}/${{ inputs['parameters-file'] }} --resource-group ${{ inputs.resource_group }} --workspace-name ${{ inputs.workspace_name }} --query name -o tsv)
           if [[ -z "$run_id" ]]
           then
             echo "Job creation failed"
